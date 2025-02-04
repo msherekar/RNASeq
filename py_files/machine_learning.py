@@ -1,100 +1,132 @@
 import scanpy as sc
 import numpy as np
 import pandas as pd
+import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import classification_report, confusion_matrix
+from collections import Counter
 
-# Step 1: Load normalized RNA-seq data
-adata = sc.read_h5ad("/Users/mukulsherekar/pythonProject/RNASeq/outputs/normalized_data.h5ad")
+# Get the absolute path of the RNASEQ main directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# Inspect the dataset: print the shape and a glimpse of gene (variable) and sample (observation) names.
-print("Data shape (samples x genes):", adata.shape)
-print("First 5 gene names:", adata.var_names[:5])
-print("First 5 sample names:", adata.obs_names[:5])
+# Define paths relative to RNASEQ/
+DATA_DIR = os.path.join(BASE_DIR, "outputs")
 
-# Step 2: Feature Selection using Highly Variable Genes
+def classification_analysis():
+    print("🔹 Running machine learning classification...")
 
-# Assuming 'adata' has been loaded from normalized_data.h5ad in Step 1
+    # Ensure the necessary input file exists
+    normalized_data_path = os.path.join(DATA_DIR, "normalized_data.h5ad")
+    if not os.path.exists(normalized_data_path):
+        raise FileNotFoundError(f"❌ Normalized data file not found: {normalized_data_path}")
 
-# Compute highly variable genes using Scanpy's built-in function.
-# The 'seurat' flavor is a popular choice; n_top_genes selects the top 2000 variable genes.
-sc.pp.highly_variable_genes(adata, flavor='seurat', n_top_genes=2000)
+    # Step 1: Load normalized RNA-seq data
+    print("📥 Loading normalized RNA-seq data...")
+    adata = sc.read_h5ad(normalized_data_path)
 
-# Inspect the number of genes identified as highly variable
-num_hv_genes = adata.var['highly_variable'].sum()
-print("Number of highly variable genes identified:", num_hv_genes)
+    # Step 2: Feature Selection using Highly Variable Genes
+    print("📊 Selecting highly variable genes...")
+    sc.pp.highly_variable_genes(adata, flavor="seurat", n_top_genes=2000)
 
-# Subset the AnnData object to include only the highly variable genes
-adata_selected = adata[:, adata.var['highly_variable']].copy()
+    # Check if 'cell_type_designation_label' is available in metadata
+    if "cell_type_designation_label" not in adata.obs.columns:
+        raise ValueError("❌ Column 'cell_type_designation_label' not found in AnnData object. Check metadata.")
 
-print("Shape of the data after selecting highly variable genes (samples x genes):", adata_selected.shape)
+    # Extract highly variable genes
+    adata_selected = adata[:, adata.var["highly_variable"]].copy()
+    print(f"✅ Selected {adata_selected.shape[1]} highly variable genes.")
 
+    # Step 3: Prepare Features and Labels
+    print("🧬 Extracting feature matrix and labels...")
+    X = adata_selected.X
+    if hasattr(X, "toarray"):  # Convert sparse to dense if needed
+        X = X.toarray()
 
-# Step 3: Data Splitting, Scaling, and Model Training using cell_type_designation_label
+    y = adata_selected.obs["cell_type_designation_label"].values
 
-# Extract the feature matrix (X) from the AnnData object
-X = adata_selected.X
-# If the feature matrix is in a sparse format, convert it to a dense array:
-if hasattr(X, "toarray"):
-    X = X.toarray()
+    # Print unique labels to understand distribution
+    unique_labels = np.unique(y)
+    print(f"🔬 Unique labels: {unique_labels}")
 
-# Inspect available columns to confirm the label column name
-print("Available columns for labels:", adata_selected.obs.columns.tolist())
+    print("🔍 Class distribution before train-test split:", Counter(y))
 
-# Extract the labels using 'cell_type_designation_label'
-y = adata_selected.obs['cell_type_designation_label'].values
+    # Replace rare classes with "Other"
+    min_class_size = 2  # Classes must have at least 2 samples
+    class_counts = Counter(y)
 
-# Print unique labels to understand the distribution
-unique_labels = np.unique(y)
-print("Unique labels in cell_type_designation_label:", unique_labels)
+    # Modify labels before splitting
+    y_merged = np.array(["Other" if class_counts[label] < min_class_size else label for label in y])
 
-# Split the data into training and testing sets (80% train, 20% test), preserving label distribution
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+    print("🔍 Class distribution after merging rare classes:", Counter(y_merged))
 
-print("Training set shape:", X_train.shape)
-print("Testing set shape:", X_test.shape)
+    # Split the data into training and testing sets (80% train, 20% test)
+    print("📌 Splitting data into train and test sets...")
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_merged, test_size=0.2, random_state=42, stratify=y_merged
+    )
 
-# Standardize the features using StandardScaler
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    # Step 4: Scale Features
+    print("📏 Standardizing features...")
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-# Train a logistic regression classifier as an example ML model
-clf = LogisticRegression(max_iter=1000, random_state=42)
-clf.fit(X_train_scaled, y_train)
+    # Step 5: Train a Machine Learning Model (Logistic Regression)
+    print("🤖 Training Logistic Regression Model...")
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    clf.fit(X_train_scaled, y_train)
 
-# Predict on the test set and evaluate performance
-y_pred = clf.predict(X_test_scaled)
-accuracy = accuracy_score(y_test, y_pred)
-print("Test set accuracy:", accuracy)
+    # Step 6: Evaluate Model Performance
+    print("📊 Evaluating model performance...")
+    y_pred = clf.predict(X_test_scaled)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"✅ Test set accuracy: {accuracy:.4f}")
 
-# Step 4: Model Evaluation and Interpretation
+    # Generate and print classification report
+    report = classification_report(y_test, y_pred)
+    print("\n🔹 Classification Report:\n", report)
 
-# Generate and print a classification report with precision, recall, and f1-score for each cell type
-print("Classification Report:")
-report = classification_report(y_test, y_pred)
-print(report)
+    # Step 7: Compute Confusion Matrix
+    print("📌 Computing confusion matrix...")
+    cm = confusion_matrix(y_test, y_pred)
 
-# Compute the confusion matrix to see the detailed breakdown of predictions vs. true labels
-cm = confusion_matrix(y_test, y_pred)
+    # Save classification results to a text file
+    results_file = os.path.join(DATA_DIR, "classification_results.txt")
+    with open(results_file, "w") as f:
+        f.write("📊 Machine Learning Classification Results\n")
+        f.write("=" * 50 + "\n")
+        f.write(f"✅ Test set accuracy: {accuracy:.4f}\n\n")
+        f.write("🔹 Classification Report:\n")
+        f.write(report + "\n")
+        f.write("🔹 Confusion Matrix:\n")
+        f.write(np.array2string(cm, separator=', ') + "\n")
 
-# Because there may be many classes, the confusion matrix might be crowded.
-# Optionally, you might consider plotting a confusion matrix for the top N most frequent classes.
-# For now, we plot the full confusion matrix.
-plt.figure(figsize=(12, 10))
-sns.heatmap(cm, cmap="viridis", cbar=True,
-            xticklabels=np.unique(y), yticklabels=np.unique(y))
-plt.xlabel("Predicted Label")
-plt.ylabel("True Label")
-plt.title("Confusion Matrix")
-plt.xticks(rotation=90)
-plt.yticks(rotation=0)
-plt.tight_layout()
-plt.show()
+    print(f"📁 Classification results saved to {results_file}")
+    # Updated labels for confusion matrix
+    merged_unique_labels = np.unique(y_merged)
+
+    # Plot confusion matrix
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, cmap="viridis", cbar=True,
+                xticklabels=merged_unique_labels, yticklabels=merged_unique_labels, annot=True, fmt="d")
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.title("Confusion Matrix")
+    plt.xticks(rotation=90)
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+
+    # Save the confusion matrix plot
+    conf_matrix_path = os.path.join(DATA_DIR, "confusion_matrix.png")
+    plt.savefig(conf_matrix_path)
+    print(f"📁 Confusion matrix saved to {conf_matrix_path}")
+
+    plt.close()
+    print("🎯 Machine learning classification completed!")
+
+if __name__ == "__main__":
+    classification_analysis()

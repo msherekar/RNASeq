@@ -1,33 +1,53 @@
-# RNA-Seq Pipeline: Visualizations (visualizations.py)
-
 import scanpy as sc
 import os
 import matplotlib.pyplot as plt
 
-# Define file paths
-data_dir = "outputs/"
-output_dir = "outputs/"
-plot_dir = "outputs/plots/"
-os.makedirs(plot_dir, exist_ok=True)
+# Get the absolute path of the RNASEQ main directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# Generate visualizations
+# Define paths relative to RNASEQ/
+DATA_DIR = os.path.join(BASE_DIR, "outputs")
+
+# Ensure the necessary input file exists
+diff_exp_data_path = os.path.join(DATA_DIR, "differential_expression.h5ad")
+if not os.path.exists(diff_exp_data_path):
+    raise FileNotFoundError(f"❌ Differential expression data file not found: {diff_exp_data_path}")
+
 def generate_plots():
-    print("Generating visualizations...")
-    adata = sc.read_h5ad(os.path.join(data_dir, "clustered_data.h5ad"))
-    
-    # UMAP Plot
-    sc.pl.umap(adata, color=['leiden'], save="_clusters.png")
-    
-    # t-SNE Plot
-    sc.pl.tsne(adata, color=['leiden'], save="_tsne_clusters.png")
-    
-    # Violin Plots for QC metrics
-    sc.pl.violin(adata, ['total_counts', 'n_genes_by_counts'], groupby='leiden', save="_qc_metrics.png")
-    
-    # Heatmap of top marker genes
-    sc.pl.rank_genes_groups_heatmap(adata, n_genes=10, save="_marker_genes.png")
-    
-    print("Plots saved in outputs/plots/")
+    print("🔹 Generating visualization plots...")
+
+    # Load differential expression data
+    adata = sc.read_h5ad(diff_exp_data_path)
+
+    # Check if `rank_genes_groups` exists
+    if "rank_genes_groups" not in adata.uns:
+        raise ValueError("❌ `rank_genes_groups` not found in AnnData object. Ensure `differential_expression.py` ran successfully.")
+
+    # Generate heatmap for top marker genes
+    print("📊 Generating heatmap for top marker genes...")
+    sc.pl.rank_genes_groups_heatmap(adata, n_genes=10, show=False)
+    heatmap_path = os.path.join(DATA_DIR, "marker_genes_heatmap.png")
+    plt.savefig(heatmap_path)
+    plt.close()  # Prevents execution from stopping
+    print(f"📁 Heatmap saved to {heatmap_path}")
+
+    # Generate dot plot
+    print("📊 Generating dot plot for marker genes...")
+    sc.pl.rank_genes_groups_dotplot(adata, n_genes=10, show=False)
+    dotplot_path = os.path.join(DATA_DIR, "marker_genes_dotplot.png")
+    plt.savefig(dotplot_path)
+    plt.close()
+    print(f"📁 Dot plot saved to {dotplot_path}")
+
+    # Generate violin plot
+    print("📊 Generating violin plot for marker genes...")
+    sc.pl.rank_genes_groups_violin(adata, n_genes=10, show=False)
+    violin_path = os.path.join(DATA_DIR, "marker_genes_violin.png")
+    plt.savefig(violin_path)
+    plt.close()
+    print(f"📁 Violin plot saved to {violin_path}")
+
+    print("✅ Visualization plots generated successfully.")
 
 if __name__ == "__main__":
     generate_plots()

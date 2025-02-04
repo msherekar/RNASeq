@@ -1,24 +1,37 @@
-# RNA-Seq Pipeline: Normalization (normalization.py)
-
 import scanpy as sc
 import os
 
-# Define file paths
-data_dir = "outputs/"
-output_dir = "outputs/"
-os.makedirs(output_dir, exist_ok=True)
+# Get the absolute path of the RNASEQ main directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Define paths relative to RNASEQ/
+DATA_DIR = os.path.join(BASE_DIR, "outputs")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+
+# Ensure output directory exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Normalize data
 def normalize_data():
     print("Normalizing data...")
-    adata = sc.read_h5ad(os.path.join(data_dir, "qc_filtered_data.h5ad"))
-    
+
+    # Construct input file path
+    qc_filtered_path = os.path.join(DATA_DIR, "qc_filtered_data.h5ad")
+    if not os.path.exists(qc_filtered_path):
+        raise FileNotFoundError(f"Filtered data file not found: {qc_filtered_path}")
+
+    # Load QC-filtered data
+    adata = sc.read_h5ad(qc_filtered_path)
+
     # Normalize total counts per cell to 10,000 reads and log-transform
     sc.pp.normalize_total(adata, target_sum=1e4)
-    sc.pp.log1p(adata)
-    
+    sc.pp.log1p(adata)  # Changed to log1p (log2p is not standard in Scanpy)
+
     # Save normalized data
-    adata.write_h5ad(os.path.join(output_dir, "normalized_data.h5ad"))
+    normalized_data_path = os.path.join(OUTPUT_DIR, "normalized_data.h5ad")
+    print(f"Saving normalized data to {normalized_data_path}...")
+    adata.write_h5ad(normalized_data_path)
+
     print("Normalization complete. Proceeding to Dimensionality Reduction...")
 
 if __name__ == "__main__":
