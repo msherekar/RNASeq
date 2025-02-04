@@ -1,0 +1,6 @@
+numpy
+pandas
+matplotlib
+scanpy
+# conda install -c conda-forge dask
+# pip install gseapy

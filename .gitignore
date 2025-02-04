@@ -1,0 +1,30 @@
+# Ignore all .log files
+*.log
+
+# Ignore all .tmp files
+*.tmp
+
+# Ignore all .zip files
+*.zip
+
+# Ignore all CSV files
+*.csv
+
+# Ignore the "data" directory (useful for large datasets)
+data/
+log_files/
+
+
+# Ignore all files larger than 100MB (manual rule, not automatic)
+
+
+# Ignore all .DS_Store files (macOS)
+.DS_Store
+
+# Ignore all .h5ad files
+*.h5ad
+
+# Ignore VS Code settings and Python virtual environments
+.vscode/
+venv/
+__pycache__/
