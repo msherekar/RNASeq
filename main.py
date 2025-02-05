@@ -15,7 +15,8 @@ from py_files import (
     differential_expression,
     pathway_analysis,
     visualizations,
-    machine_learning,  
+    supervised, 
+    unsupervised,  
 )
 
 # Configure logging
@@ -79,11 +80,17 @@ def run_pipeline():
         visualizations.generate_plots()
         logging.info(f"Step 8 completed in {time.time() - step_start:.2f} seconds")
 
-        # Step 9: Machine Learning Classification
-        print("🔹 Step 9: Running Machine Learning Classification...")
+        # Step 9: Supervised Learning
+        print("🔹 Step 9: Running Supervised Learning...")
         step_start = time.time()
-        machine_learning.classification_analysis()  # Ensure this function exists in classification_analysis.py
+        supervised.supervised_learning()  
         logging.info(f"Step 9 completed in {time.time() - step_start:.2f} seconds")
+
+        # Step: 10: Unsupervised Learning
+        print("🔹 Step 10: Running Unsupervised Learning...")
+        step_start = time.time()
+        unsupervised.unsupervised_learning()
+        logging.info(f"Step 10 completed in {time.time() - step_start:.2f} seconds")
 
         # Pipeline completed
         total_time = time.time() - start_time
