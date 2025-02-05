@@ -1,11 +1,13 @@
 import scanpy as sc
 import os
+import pandas as pd
 
 # Get the absolute path of the RNASEQ main directory
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 # Define paths relative to RNASEQ/
 DATA_DIR = os.path.join(BASE_DIR, "outputs")
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 # Ensure the necessary input file exists
 clustered_data_path = os.path.join(DATA_DIR, "clustered_data.h5ad")
@@ -35,6 +37,12 @@ def differential_expression():
     diff_exp_data_path = os.path.join(DATA_DIR, "differential_expression.h5ad")
     print(f"📁 Saving differential expression results to {diff_exp_data_path}...")
     adata.write_h5ad(diff_exp_data_path)
+
+    # Save marker genes to CSV
+    marker_genes_path = os.path.join(RESULTS_DIR, "marker_genes.csv")
+    result = pd.DataFrame(adata.uns['rank_genes_groups']['names']).head(50)  # Top 50 marker genes
+    result.to_csv(marker_genes_path, index=False)
+    print(f"✅ Marker genes saved to CSV: {marker_genes_path}")
 
     print("✅ Differential expression analysis complete. Proceeding to Pathway Analysis...")
 
