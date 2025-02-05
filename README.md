@@ -1,5 +1,5 @@
-* A toy pipeline to process RNA Seq data (see readme_data.txt for details) and run a toy ML classification model.
+* A toy pipeline to process RNA Seq data (see readme_data.txt for details) and run a toy machine learning pipellines.
 * In the data file (matrix.csv), one row is for every cell and one column for every gene sequenced. 
 * The values of the matrix represent total reads (introns + exons) for that gene (column) for that cell (row).
-* Processing=> Load->QC->Normalization->Dimensionality Reduction->Clustering->Differential Expression Analysis -> Pathway Analysis - > Visualizations -> ML (Classification)
-* The goal of ML model is to predict cell_type_designation_label
+* Processing=> Load->QC->Normalization->Dimensionality Reduction->Clustering->Differential Expression Analysis -> Pathway Analysis - > Visualizations -> ML
+* The goal of ML models is to predict cluster label
