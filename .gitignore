@@ -29,3 +29,11 @@ outputs/
 .vscode/
 venv/
 __pycache__/
+
+# aws files
+*.pem
+*.txt
+
+# Ignore config file
+aws/config.py
+
