@@ -13,20 +13,20 @@ def upload_to_s3():
     s3 = boto3.client("s3")
     
     # Iterate over each file defined in the config FASTQ_FILES list
-    for fastq_file in config.FASTQ_FILES:
+    for gz_file in config.GZ_FILES:
         # Construct the local file path. Assuming this script is run from RNASEQ/aws,
         # and the data folder is in RNASEQ/data.
-        file_path = os.path.join("..", "data", fastq_file)
+        file_path = os.path.join("..", "data", gz_file)
         
         # Define the S3 key. Here we place the file in a "data" folder in the S3 bucket.
-        s3_key = os.path.join("data", fastq_file)
+        s3_key = os.path.join("data", gz_file)
         
         print(f"📤 Uploading {file_path} as {s3_key} to S3 bucket {config.S3_BUCKET}...")
         try:
             s3.upload_file(file_path, config.S3_BUCKET, s3_key)
-            print(f"✅ {fastq_file} uploaded successfully.")
+            print(f"✅ {gz_file} uploaded successfully.")
         except Exception as e:
-            print(f"❌ Failed to upload {fastq_file}: {e}")
+            print(f"❌ Failed to upload {gz_file}: {e}")
 
 if __name__ == "__main__":
     upload_to_s3()
