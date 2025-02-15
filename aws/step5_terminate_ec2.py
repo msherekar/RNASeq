@@ -1,4 +1,6 @@
+# step5_terminate_ec2.py
 import boto3
+import logging
 
 def get_instance_id_by_name(instance_name):
     """
@@ -11,44 +13,57 @@ def get_instance_id_by_name(instance_name):
         str: The instance ID if found, otherwise None.
     """
     ec2 = boto3.client("ec2")
+    try:
+        response = ec2.describe_instances(
+            Filters=[
+                {"Name": "tag:Name", "Values": [instance_name]},
+                {"Name": "instance-state-name", "Values": ["running", "pending", "stopping", "stopped"]}
+            ]
+        )
 
-    response = ec2.describe_instances(
-        Filters=[
-            {"Name": "tag:Name", "Values": [instance_name]},
-            {"Name": "instance-state-name", "Values": ["running", "pending", "stopping", "stopped"]}
+        instances = [
+            res["Instances"][0]["InstanceId"]
+            for res in response["Reservations"] if res["Instances"]
         ]
-    )
 
-    instances = [
-        res["Instances"][0]["InstanceId"]
-        for res in response["Reservations"] if res["Instances"]
-    ]
+        if not instances:
+            logging.error("❌ No running/stopped instances found with name: %s", instance_name)
+            return None
 
-    if not instances:
-        print(f"❌ No running/stopped instances found with name: {instance_name}")
+        return instances[0]  # Return the first matching instance ID
+
+    except Exception as e:
+        logging.error("❌ An error occurred while retrieving instance ID for %s: %s", instance_name, e)
         return None
-
-    return instances[0]  # Return the first matching instance ID
 
 def terminate_ec2():
     """
     Reads instance details from `instance_info.txt` and terminates the instance.
+    Assumes instance_info.txt contains two lines:
+      Line 1: instance_id
+      Line 2: public_ip
     """
     try:
         with open("instance_info.txt", "r") as f:
             lines = f.read().splitlines()
-            instance_name = lines[0].split(": ")[1]  # Extract name from "Instance Name: <name>"
-            instance_id = lines[1].split(": ")[1]  # Extract ID from "Instance ID: <id>"
+            if len(lines) < 1:
+                logging.error("instance_info.txt does not contain the required instance details.")
+                return
+            instance_id = lines[0].strip()
 
-        print(f"🛑 Terminating EC2 instance: {instance_name} (ID: {instance_id})...")
+        logging.info("🛑 Terminating EC2 instance with ID: %s...", instance_id)
         ec2 = boto3.client("ec2")
-        ec2.terminate_instances(InstanceIds=[instance_id])
-        print(f"✅ EC2 instance {instance_name} terminated.")
+        response = ec2.terminate_instances(InstanceIds=[instance_id])
+        logging.info("✅ Termination initiated for instance ID: %s. Response: %s", instance_id, response)
 
     except FileNotFoundError:
-        print("❌ instance_info.txt not found. Cannot terminate instance.")
+        logging.error("❌ instance_info.txt not found. Cannot terminate instance.")
     except IndexError:
-        print("❌ instance_info.txt format is incorrect. Ensure it contains instance details.")
+        logging.error("❌ instance_info.txt format is incorrect. Ensure it contains instance details.")
+    except Exception as e:
+        logging.error("❌ An error occurred while terminating the EC2 instance: %s", e)
 
 if __name__ == "__main__":
+    # Configure logging if not already configured by the main pipeline.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     terminate_ec2()
